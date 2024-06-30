@@ -1,6 +1,7 @@
 # encoding: utf-8
 """Unit tests for ckan/logic/action/update.py."""
 import datetime
+import uuid
 
 import unittest.mock as mock
 import pytest
@@ -1503,6 +1504,18 @@ class TestGroupUpdate(object):
 
         assert group["image_url"] == "new_image_url.jpg"
 
+    def test_group_update_locates_group_by_name(self, group, faker):
+        description = faker.sentence()
+        original_id = group["id"]
+        group = helpers.call_action(
+            "group_update",
+            id=group["name"],
+            description=description
+        )
+
+        assert group["id"] == original_id
+        assert group["description"] == description
+
     def test_group_update_cant_change_type(self):
         user = factories.User()
         context = {"user": user["name"]}
@@ -1887,39 +1900,47 @@ class TestDatasetRevise(object):
         assert response["package"]["resources"][0]["name"] == "new name"
 
     def test_revise_resource_by_id(self):
+        _id = str(uuid.uuid4())
         dataset = factories.Dataset(
             resources=[
                 {
-                    "id": "34a12bc-1420-cbad-1922",
+                    "id": _id,
                     "url": "http://example.com",
                     "name": "old name",
                 }
             ]
         )
-        response = helpers.call_action(
-            "package_revise",
-            match={"id": dataset["id"]},
-            update__resources__34a12={
+        params = {
+            "match": {"id": dataset["id"]},
+            f"update__resources__{_id[:5]}": {
                 "name": "new name"
             },  # prefixes allowed >4 chars
+        }
+        response = helpers.call_action(
+            "package_revise", **params
         )
         assert response["package"]["resources"][0]["name"] == "new name"
 
     def test_revise_resource_replace_all(self):
+
+        _id = str(uuid.uuid4())
         dataset = factories.Dataset(
             resources=[
                 {
-                    "id": "34a12bc-1420-cbad-1923",
+                    "id": _id,
                     "url": "http://example.com",
                     "name": "old name",
                 }
             ]
         )
+        prefix = _id[:5]
+        params = {
+            "match": {"id": dataset["id"]},
+            "filter": [f"+resources__{prefix}__id", f"-resources__{prefix}__*"],
+            f"update__resources__{prefix}": {"name": "new name"},
+        }
         response = helpers.call_action(
-            "package_revise",
-            match={"id": dataset["id"]},
-            filter=["+resources__34a12__id", "-resources__34a12__*"],
-            update__resources__34a12={"name": "new name"},
+            "package_revise", **params
         )
         assert response["package"]["resources"][0]["name"] == "new name"
         assert response["package"]["resources"][0]["url"] == ""
