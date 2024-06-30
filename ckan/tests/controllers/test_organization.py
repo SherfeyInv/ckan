@@ -1,5 +1,7 @@
 # encoding: utf-8
 
+import uuid
+
 import pytest
 from bs4 import BeautifulSoup
 
@@ -99,11 +101,37 @@ class TestOrganizationRead(object):
         assert response.headers['location'] == expected_url
 
     def test_no_redirect_loop_when_name_is_the_same_as_the_id(self, app):
-        name = factories.Organization.stub().name
-        org = factories.Organization(id=name, name=name)
+        id_ = str(uuid.uuid4())
+        org = factories.Organization(id=id_, name=id_)
         app.get(
             url_for("organization.read", id=org["id"]), status=200
         )  # ie no redirect
+
+    def test_group_read_displays_correct_dataset_count(self, app):
+        """
+        Tests that the organization read view displays the correct
+        dataset count with and without a search query.
+        """
+        org = factories.Organization()
+        _, dataset = factories.Dataset.create_batch(2, owner_org=org["id"])
+
+        # Test without search query
+        resp = app.get(url_for("organization.read", id=org["id"]))
+        soup = BeautifulSoup(resp.body, 'html.parser')
+
+        dataset_count = soup.find('dt', text='Datasets').find_next_sibling('dd').find('span')
+        assert dataset_count.text == "2"
+
+        # Test with search query
+        title = dataset["title"]
+        resp = app.get(url_for("organization.read", id=org["id"], q=title))
+        soup = BeautifulSoup(resp.body, 'html.parser')
+
+        dataset_count = soup.find('dt', text='Datasets').find_next_sibling('dd').find('span')
+        assert dataset_count.text == "2"
+
+        h1_tag = soup.select_one('h1:contains("dataset")')
+        assert h1_tag.text.strip() == f'1 dataset found for "{title}"'
 
 
 @pytest.mark.usefixtures("non_clean_db")
