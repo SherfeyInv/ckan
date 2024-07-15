@@ -23,3 +23,4 @@ pytest-freezegun==0.4.2
 pytest-rerunfailures==14.0
 pytest-split==0.8.2
 urllib3>=2.2.2 # not directly required, pinned by Snyk to avoid a vulnerability
+setuptools>=70.0.0 # not directly required, pinned by Snyk to avoid a vulnerability
