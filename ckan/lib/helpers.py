@@ -453,7 +453,7 @@ def _url_for_flask(*args: Any, **kw: Any) -> str:
                 for key, val in kw.items():
                     if isinstance(val, (list, tuple)):
                         for value in val:
-                            if value is None or value == {}:
+                            if value is None:
                                 continue
                             query_args.append(
                                 u'{}={}'.format(
@@ -462,7 +462,7 @@ def _url_for_flask(*args: Any, **kw: Any) -> str:
                                 )
                             )
                     else:
-                        if val is None or val == {}:
+                        if val is None:
                             continue
                         query_args.append(
                             u'{}={}'.format(
@@ -947,9 +947,9 @@ def map_pylons_to_flask_route_name(menu_item: str):
             LEGACY_ROUTE_NAMES.update(mappings)
 
     if menu_item in LEGACY_ROUTE_NAMES:
-        log.info('Route name "{}" is deprecated and will be removed. '
-                 'Please update calls to use "{}" instead'
-                 .format(menu_item, LEGACY_ROUTE_NAMES[menu_item]))
+        log.info('Route name "%s" is deprecated and will be removed. '
+                 'Please update calls to use "%s" instead',
+                 menu_item, LEGACY_ROUTE_NAMES[menu_item])
     return LEGACY_ROUTE_NAMES.get(menu_item, menu_item)
 
 
@@ -1037,7 +1037,8 @@ def humanize_entity_type(entity_type: str, object_type: str,
     Possible purposes(depends on `entity_type` and change over time)::
 
         `add link`: "Add [object]" button on search pages
-        `breadcrumb`: "Home / [object]s / New" section in breadcrums
+        `add association link`: "Add to [object]" button on dataset pages
+        `breadcrumb`: "Home / [object]s / New" section in breadcrumbs
         `content tab`: "[object]s | Groups | Activity" tab on details page
         `create label`: "Home / ... / Create [object]" part of breadcrumb
         `create title`: "Create [object] - CKAN" section of page title
@@ -1051,10 +1052,10 @@ def humanize_entity_type(entity_type: str, object_type: str,
         `my label`: "My [object]s" tab in dashboard
         `name placeholder`: "<[object]>" section of URL preview on object form
         `no any objects`: No objects created yet
-        `no associated label`: no gorups for dataset
+        `no associated label`: no groups for dataset
         `no description`: object has no description
         `no label`: package with no organization
-        `page title`: "Title - [objec]s - CKAN" section of page title
+        `page title`: "Title - [object]s - CKAN" section of page title
         `save label`: "Save [object]" button
         `search placeholder`: "Search [object]s..." placeholder
         `update label`: "Update [object]" button
@@ -1075,6 +1076,7 @@ def humanize_entity_type(entity_type: str, object_type: str,
         u'Humanize %s of type %s for %s', entity_type, object_type, purpose)
     templates = {
         u'add link': _(u"Add {object_type}"),
+        u'add association link': _(u"Add to {object_type}"),
         u'breadcrumb': _(u"{object_type}s"),
         u'content tab': _(u"{object_type}s"),
         u'create label': _(u"Create {object_type}"),
@@ -1197,6 +1199,26 @@ def has_more_facets(facet: str,
     if limit is not None and len(facets) > limit:
         return True
     return False
+
+
+@core_helper
+def currently_active_facet(facet: str) -> bool:
+    params_items = request.args.keys()
+    expanded_facet = "_" + facet + "_limit"
+    if facet in params_items or expanded_facet in params_items:
+        return True
+    else:
+        return False
+
+
+@core_helper
+def default_collapse_facets():
+    '''Returns config option for `ckan.default_collapse_facets`.
+    If true, the facets in the secondary will be collapsed by default.
+    If false, the facets will all be open, unless closed by the user.
+    Default is false
+    '''
+    return config['ckan.default_collapse_facets']
 
 
 @core_helper
@@ -1830,7 +1852,7 @@ def convert_to_dict(object_type: str, objs: list[Any]) -> list[dict[str, Any]]:
     converters = {'package': md.package_dictize}
     converter = converters[object_type]
     items = []
-    context: Context = {'model': model}
+    context: Context = {}
     for obj in objs:
         item = converter(obj, context)
         items.append(item)
@@ -2494,6 +2516,23 @@ def get_featured_groups(count: int = 1) -> list[dict[str, Any]]:
 
 
 @core_helper
+def get_recent_datasets(count: int = 1) -> list[dict[str, Any]]:
+    '''Returns a list of recently modified/created datasets
+    '''
+    context: Context = {'ignore_auth': True, 'for_view': True}
+    data_dict = {'rows': count, 'sort': 'metadata_modified desc'}
+    recently_updated_datasets = logic.get_action('package_search')(context, data_dict)
+    return recently_updated_datasets['results']
+
+
+@core_helper
+def get_dataset_count() -> dict[str, int]:
+    stats = logic.get_action('package_search')(
+        {}, {"rows": 0})['count']
+    return stats
+
+
+@core_helper
 def featured_group_org(items: list[str], get_action: str, list_action: str,
                        count: int) -> list[dict[str, Any]]:
     def get_group(id: str):
@@ -2864,4 +2903,8 @@ def make_login_url(
 
 @core_helper
 def csrf_input():
-    return snippet('snippets/csrf_input.html')
+    '''
+    Render a hidden CSRF input field.
+    '''
+    import ckan.lib.base as base
+    return literal(base.render('snippets/csrf_input.html'))

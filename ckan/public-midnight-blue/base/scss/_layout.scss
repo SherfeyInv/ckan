@@ -1,42 +1,3 @@
-.wrapper {
-    @include clearfix();
-    @extend .box;
-    position: relative;
-    min-height: 300px;
-    background-color: #fff;
-    @include media-breakpoint-up(md) {
-        &:before {
-            content: '';
-            display: block;
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            left: 0;
-            width: 25%;
-            border-right: 1px solid $genericBorderColor;
-            z-index: 1; // Fixes overlapping .secondary on the Resource view page
-        }
-        &.no-nav {
-            &:before {
-                display: none;
-            }
-            .module {
-                >.page-header {
-                    margin-top: 0;
-                }
-            }
-        }
-    }
-}
-
-// @media (min-width: $screen-md-min) {
-//   .wrapper {
-//     background-position:0px 0px;
-//   }
-// }
-// .wrapper.no-nav {
-//     background-image: none;
-// }
 [role=main],
 .main {
     position: relative;
@@ -44,7 +5,7 @@
 
 .main {
     padding: 20px 0;
-    background: $layoutBackgroundColor url("#{$bgPath}");
+    background-color: $white;
 }
 
 .main:after,
@@ -54,15 +15,15 @@
 }
 
 .main .primary {
+    border-radius: 20px;
+    background-color: $layoutPrimaryBackgroundColor;
     position: relative;
     float: right;
     margin-left: 0; // Remove grid margin.
 }
 
 .main .secondary {
-    padding: 0;
     z-index: 1;
-    padding-right: 1px;
 }
 
 
@@ -76,33 +37,19 @@
     overflow: hidden;
 }
 
+.show-filters.btn {
+    background-color: $gray-50;
+    font-weight: 500;
+}
+
 .show-filters.btn,
 .hide-filters {
     display: none;
 }
 
 @include media-breakpoint-down(md) {
-    .wrapper {
-        border-width: 0;
-        @include box-shadow(0);
-        @include border-radius(0);
-        display: -webkit-box;
-        display: -webkit-flex;
-        display: flex;
-        -webkit-box-orient: vertical;
-        -moz-box-orient: vertical;
-        -webkit-flex-direction: column-reverse;
-        flex-direction: column-reverse;
-        -webkit-box-align: start;
-        -moz-box-align: start;
-        -webkit-align-items: flex-start;
-        align-items: flex-start;
-    }
-    .main .secondary {
-        -webkit-box-ordinal-group: 2;
-        -moz-box-ordinal-group: 2;
-        -webkit-order: 2;
-        order: 2;
+.main .secondary {
+        margin: 1rem 0;
     }
     .js .main .secondary .filters {
         display: none;
@@ -113,9 +60,8 @@
         right: 0;
         bottom: 0;
         z-index: 1000;
-        padding: 10px;
-        background-color: rgb(0, 0, 0);
-        background-color: rgba(0, 0, 0, 0.50);
+        padding: 40px 10px 0;
+        background-color: $white;
     }
     .js body.filters-modal .secondary .filters {
         display: block;
@@ -126,18 +72,15 @@
         -moz-border-radius: 4px;
         border-radius: 4px;
         overflow: hidden;
-    }
-    .js .main .secondary .filters>div .module-footer {
-        display: none;
+        padding: 0 10px;
     }
     .js body.filters-modal .secondary .filters .hide-filters {
         display: inline-block;
         position: absolute;
         top: 14px;
         right: 17px;
-        opacity: 0.6;
         i {
-            font-size: 18px;
+            font-size: 24px;
         }
     }
     .js .show-filters.btn {
@@ -165,12 +108,6 @@
     }
 }
 
-@include media-breakpoint-up(sm) {
-    .hero {
-        background: url("#{$imagePath}/background-tile.png");
-    }
-}
-
 .hero:after {
     // Need to manually declare this here@mixin  If you pass rgba() through to
     // #gradient it breaks the filter property in IE7.
@@ -189,7 +126,7 @@
 
 .context-info {
     .module-content {
-        padding: 15px;
+        padding: 0;
     }
     .image {
         margin-bottom: 10px;
@@ -213,7 +150,7 @@
         margin: 0;
         overflow: auto;
     }
-    h1.heading {
+    .heading {
         margin: 0 0 5px 0;
         font-size: 18px;
         line-height: 1.3;
@@ -235,7 +172,6 @@
         flex-wrap: wrap;
         justify-content: space-between;
         padding-top: 10px;
-        border-top: 1px dotted #DDD;
         dl {
             color: $layoutTextColor;
             dt {
