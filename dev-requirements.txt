@@ -16,12 +16,4 @@ pip-tools==7.4.1
 pytest-cov==6.2.1
 pytest-factoryboy==2.7.0
 pytest-freezegun==0.4.2
-pytest-rerunfailures==15.1
-pytest-retry==1.7.0
-pytest-split==0.10.0
-pytest==8.3.5
-responses==0.25.7
-sphinx-rtd-theme==3.0.2
-sphinx==7.4.7
-toml==0.10.2
-towncrier==24.8.0
+
