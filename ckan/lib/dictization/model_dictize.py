@@ -21,10 +21,11 @@ from typing import (
 from typing_extensions import Literal
 
 from urllib.parse import urlsplit
+
 from sqlalchemy.sql.schema import Table
 from sqlalchemy.sql.selectable import Select
 
-from sqlalchemy.sql import select
+from sqlalchemy.sql import select, false
 
 import ckan.logic as logic
 import ckan.plugins as plugins
@@ -146,7 +147,7 @@ def resource_dictize(res: model.Resource, context: Context) -> dict[str, Any]:
     return resource
 
 
-def _execute(q: Select, table: Table, context: Context) -> Any:
+def _execute(q: Select[Any], table: Table, context: Context) -> Any:
     '''
     Takes an SqlAlchemy query (q) that is (at its base) a Select on an
     object table (table), and it returns the object.
@@ -154,7 +155,6 @@ def _execute(q: Select, table: Table, context: Context) -> Any:
     Analogous with _execute_with_revision, so takes the same params, even
     though it doesn't need the table.
     '''
-    model = context['model']
     session = model.Session
     result: Any = session.execute(q)
     return result
@@ -166,7 +166,6 @@ def package_dictize(
     '''
     Given a Package object, returns an equivalent dictionary.
     '''
-    model = context['model']
     assert not (context.get('revision_id') or
                 context.get('revision_date')), \
         'Revision functionality has been removed'
@@ -223,7 +222,7 @@ def package_dictize(
     ).where(
         member.c["table_id"] == pkg.id,
         member.c["state"] == 'active',
-        group.c["is_organization"] == False
+        group.c["is_organization"] == false()
     )
 
     result = execute(q, member, context)
@@ -268,8 +267,7 @@ def package_dictize(
     # Extra properties from the domain object
 
     # isopen
-    result_dict['isopen'] = pkg.isopen if isinstance(pkg.isopen, bool) \
-        else pkg.isopen()
+    result_dict['isopen'] = pkg.isopen()
 
     # type
     # if null assign the default value to make searching easier
@@ -316,7 +314,6 @@ def _get_members(context: Context, group: model.Group,
 def _get_members(context: Context, group: model.Group,
                  member_type: str) -> list[tuple[Any, str]]:
 
-    model = context['model']
     Entity = getattr(model, member_type[:-1].capitalize())
     q = model.Session.query(
         Entity, model.Member.capacity).\
@@ -325,7 +322,7 @@ def _get_members(context: Context, group: model.Group,
         filter(model.Member.state == 'active').\
         filter(model.Member.table_name == member_type[:-1])
     if member_type == 'packages':
-        q = q.filter(Entity.private==False)
+        q = q.filter(Entity.private == false())
     if 'limits' in context and member_type in context['limits']:
         limit: int = context['limits'][member_type]
         return q.limit(limit).all()
@@ -335,7 +332,7 @@ def _get_members(context: Context, group: model.Group,
 def get_group_dataset_counts() -> dict[str, Any]:
     '''For all public groups, return their dataset counts, as a SOLR facet'''
     query = search.PackageSearchQuery()
-    q: dict[str, Any] = {'q': '',
+    q: dict[str, Any] = {'q': '', 'fq': 'dataset_type:dataset',
          'fl': 'groups', 'facet.field': ['groups', 'owner_org'],
          'facet.limit': -1, 'rows': 1}
     query.run(q)
@@ -510,7 +507,6 @@ def tag_dictize(tag: model.Tag, context: Context,
         vocab_id = tag_dict.get('vocabulary_id')
 
         if vocab_id:
-            model = context['model']
             vocab = model.Vocabulary.get(vocab_id)
             assert vocab
             tag_query += u'+vocab_{0}:"{1}"'.format(vocab.name, tag.name)
@@ -569,7 +565,6 @@ def user_dictize(
         user: Union[model.User, tuple[model.User, str]], context: Context,
         include_password_hash: bool=False,
         include_plugin_extras: bool=False) -> dict[str, Any]:
-    model = context['model']
 
     if context.get('with_capacity'):
         # Fix type: "User" is not iterable
@@ -605,7 +600,7 @@ def user_dictize(
         result_dict['apikey'] = apikey
         result_dict['email'] = email
 
-    if authz.is_sysadmin(requester):
+    if authz.is_sysadmin(requester) or context.get("ignore_auth") is True:
         result_dict['apikey'] = apikey
         result_dict['email'] = email
 
@@ -667,7 +662,7 @@ def resource_view_dictize(resource_view: model.ResourceView,
     dictized.pop('order')
     config = dictized.pop('config', {})
     dictized.update(config)
-    resource = context['model'].Resource.get(resource_view.resource_id)
+    resource = model.Resource.get(resource_view.resource_id)
     assert resource
     package_id = resource.package_id
     dictized['package_id'] = package_id

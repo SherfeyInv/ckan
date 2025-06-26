@@ -131,6 +131,21 @@ class TestPackageActivityList(object):
         assert activities[1]["activity_type"] == "new package"
         assert activities[1]["data"]["package"]["title"] == original_title
 
+    def test_no_change_dataset(self):
+        user = factories.User()
+        _clear_activities()
+        dataset = factories.Dataset(user=user)
+        helpers.call_action(
+            "package_update", context={"user": user["name"]}, **dataset
+        )
+
+        activities = helpers.call_action(
+            "package_activity_list", id=dataset["id"]
+        )
+        assert [activity["activity_type"] for activity in activities] == [
+            "new package",
+        ]
+
     def test_change_dataset_add_extra(self):
         user = factories.User()
         dataset = factories.Dataset(user=user)
@@ -323,7 +338,7 @@ class TestPackageActivityList(object):
         dataset = factories.Dataset(
             private=True, owner_org=org["id"], user=user
         )
-        dataset["tags"] = []
+        dataset["title"] = 'changed title'
         helpers.call_action(
             "package_update", context={"user": user["name"]}, **dataset
         )
@@ -2748,3 +2763,16 @@ class TestActivityCreate:
         }
         result = helpers.call_action("activity_create", **activity_dict)
         assert result.get("activity_type") == 'changed package'
+
+
+@pytest.mark.ckan_config("ckan.plugins", "activity image_view")
+@pytest.mark.usefixtures("non_clean_db", "with_plugins")
+class TestDeleteResourceViewActivity(object):
+    def test_resource_view_delete(self):
+        resource_view = factories.ResourceView()
+        user = factories.Sysadmin()
+
+        context = {"user": user["name"], "ignore_auth": False}
+        params = {"id": resource_view["id"]}
+
+        helpers.call_action("resource_view_delete", context=context, **params)

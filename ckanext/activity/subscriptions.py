@@ -22,7 +22,7 @@ def get_subscriptions() -> types.SignalMapping:
             {"sender": "bulk_update_private", "receiver": bulk_changed},
             {"sender": "bulk_update_delete", "receiver": bulk_changed},
             {"sender": "package_create", "receiver": package_changed},
-            {"sender": "package_update", "receiver": package_changed},
+            {"sender": "package_update", "receiver": package_updated},
             {"sender": "package_delete", "receiver": package_changed},
             {
                 "sender": "resource_view_create",
@@ -171,6 +171,16 @@ def package_changed(sender: str, **kwargs: Any):
     )
 
 
+def package_updated(sender: str, **kwargs: Any):
+    # package_update includes a context value indicating whether
+    # a real update occurred, if not, skip creating the activity
+    context = kwargs["context"]
+    if not context.get('changed_entities', {}).get('packages', set()):
+        return
+
+    package_changed(sender, **kwargs)
+
+
 # action, context, data_dict, result
 def resource_view_changed(sender: str, **kwargs: Any):
     for key in ("result", "context", "data_dict"):
@@ -187,7 +197,7 @@ def resource_view_changed(sender: str, **kwargs: Any):
     elif isinstance(result, str):
         id_ = result
     else:
-        id_ = result["id"]
+        id_ = result.get("id", data_dict.get("id"))
 
     if sender == "resource_view_create":
         activity_type = "new resource view"
@@ -197,21 +207,21 @@ def resource_view_changed(sender: str, **kwargs: Any):
         activity_type = "deleted resource view"
 
     if activity_type != "deleted resource view":
-        view = context["model"].ResourceView.get(id_)
+        view = model.ResourceView.get(id_)
         assert view
         view_dict = dictization.table_dictize(view, context)
     else:
-        view_dict = data_dict
+        view_dict = {"id": id_, "resource_id": result.get("resource_id")}
 
     assert view_dict.get('id')
     assert view_dict.get('resource_id')
 
     # type_ignore_reason: is asserted above, so will have resource_id here.
-    resource = context["model"].Resource.get(
+    resource = model.Resource.get(
         view_dict.get('resource_id'))  # type: ignore
     assert resource
 
-    user_obj = context["model"].User.get(context["user"])
+    user_obj = model.User.get(context["user"])
     if user_obj:
         user_id = user_obj.id
     else:
@@ -241,7 +251,7 @@ def group_or_org_changed(sender: str, **kwargs: Any):
     result: types.ActionResult.GroupUpdate = kwargs["result"]
     data_dict = kwargs["data_dict"]
 
-    group = context["model"].Group.get(
+    group = model.Group.get(
         result["id"] if result else data_dict["id"]
     )
     if not group:

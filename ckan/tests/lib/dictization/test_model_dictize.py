@@ -286,6 +286,8 @@ class TestGroupDictize:
         org_obj = factories.Organization.model()
         other_org_ = factories.Organization()
         factories.Dataset(owner_org=org_obj.id)
+        # only actual datasets should be returned
+        factories.Dataset(owner_org=org_obj.id, type="not_dataset")
         factories.Dataset(owner_org=other_org_["id"])
         context = {
             "model": model,
@@ -470,7 +472,7 @@ class TestPackageDictize:
 
         context = {"model": model, "session": model.Session}
 
-        result = model_save.resource_dict_save(resource, context)
+        result, _change = model_save.resource_dict_save(resource, context)
 
         expected_dict = {u"url": u"some_filename.csv", u"url_type": u"upload"}
         assert expected_dict["url"] == result.url
@@ -484,7 +486,7 @@ class TestPackageDictize:
 
         context = {"model": model, "session": model.Session}
 
-        result = model_save.resource_dict_save(resource, context)
+        result, _change = model_save.resource_dict_save(resource, context)
 
         expected_dict = {u"url": u"some_filename.csv", u"url_type": u"upload"}
         assert expected_dict["url"] == result.url

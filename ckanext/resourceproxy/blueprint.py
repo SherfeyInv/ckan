@@ -26,7 +26,7 @@ def proxy_resource(context: Context, data_dict: DataDict):
 
     '''
     resource_id = data_dict[u'resource_id']
-    log.info(u'Proxify resource {id}'.format(id=resource_id))
+    log.info('Proxify resource %s', resource_id)
     try:
         resource = get_action(u'resource_show')(context, {u'id': resource_id})
     except logic.NotFound:
@@ -40,7 +40,7 @@ def proxy_resource(context: Context, data_dict: DataDict):
     timeout = config.get('ckan.resource_proxy.timeout')
     max_file_size = config.get(u'ckan.resource_proxy.max_file_size')
     proxy = config.get('ckan.download_proxy')
-    proxies = {'http': proxy, 'https': proxy}
+    proxies = {'http': proxy, 'https': proxy} if proxy else None
     response = make_response()
     try:
         # first we try a HEAD request which may not be supported
