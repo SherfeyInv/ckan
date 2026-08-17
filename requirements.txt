@@ -133,7 +133,7 @@ sqlalchemy==2.0.51
     # via
     #   -r requirements.in
     #   alembic
-sqlparse==0.5.5
+sqlparse==0.6.0
     # via -r requirements.in
 tomli==2.4.1
     # via alembic
